@@ -1,5 +1,5 @@
 """
-Uses the "The Movie Database (TMDb)" API to find all movies released in the U.S. and writes them to files.
+Uses the "The Movie Database (TMDb)" API to find all movies released in the U.S. and writes their release date and name to files.
 """
 import sys
 import math
@@ -204,7 +204,7 @@ def main():
     stdout_handler = logging.StreamHandler(sys.stdout)
     stdout_handler.setLevel(logging.DEBUG)
 
-    file_handler = logging.FileHandler("fetch_movies.log", mode='w')
+    file_handler = logging.FileHandler("logs/fetch_movies.log", mode='w')
     file_handler.setLevel(logging.WARNING)
 
     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -243,11 +243,12 @@ def main():
 
     min_runtime_mins = 40
     retries = 3
+    csvfiles_dirname = "data"
     while (start_date < today):
         data = discover_lte_500pages_movies_between(start_date, end_date, min_runtime_mins=min_runtime_mins, one_of_genre_ids=genre_ids, retries=retries)
         end_date = data['end_date']
 
-        with open(f"movies_from_{start_date}_to_{end_date}.csv", 'w', encoding='utf-8', newline='') as f:
+        with open(f"{csvfiles_dirname}/movies_from_{start_date}_to_{end_date}.csv", 'w', encoding='utf-8', newline='') as f:
             csvwriter = csv.writer(f)
             csvwriter.writerow(["#Release Date", "#Title"])
             write_all_pages(csvwriter, data, start_date, end_date, min_runtime_mins=min_runtime_mins, one_of_genre_ids=genre_ids, retries=retries)
