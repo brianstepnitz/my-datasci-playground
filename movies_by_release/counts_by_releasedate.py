@@ -8,7 +8,7 @@ def main():
 
     date_counter = Counter()
     for filename in os.listdir(datadir_name):
-        if filename.endswith(".csv"):
+        if filename.startswith("movies_from_") and filename.endswith(".csv"):
             with open(f"{datadir_name}/{filename}", encoding='utf-8') as f:
                 csvreader = csv.reader(f)
                 next(csvreader) # Eat the header row.
@@ -21,8 +21,8 @@ def main():
         sum = 0
         for item in sorted(date_counter.items()):
             count = item[1]
-            csvwriter.writerow([item[0], item[1], sum])
             sum += count
+            csvwriter.writerow([item[0], item[1], sum])
     
     print("Done!")
 
