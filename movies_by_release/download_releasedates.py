@@ -7,6 +7,7 @@ import math
 import time
 import logging
 import csv
+import os
 from tmdbv3api import TMDb, Discover, Movie
 from datetime import date, timedelta
 
@@ -133,10 +134,10 @@ def discover_lte_500pages_movies_between(
         number of retries.
     """
     data = discover_movies_between(
-        start_date,
-        end_date,
-        min_runtime_mins,
-        one_of_genre_ids,
+        start_date=start_date,
+        end_date=end_date,
+        min_runtime_mins=min_runtime_mins,
+        one_of_genre_ids=one_of_genre_ids,
         page=1,
         retries=retries)
 
@@ -145,10 +146,10 @@ def discover_lte_500pages_movies_between(
         end_date = start_date + (timediff / 2)
 
         data = discover_movies_between(
-            start_date,
-            end_date,
-            min_runtime_mins,
-            one_of_genre_ids,
+            start_date=start_date,
+            end_date=end_date,
+            min_runtime_mins=min_runtime_mins,
+            one_of_genre_ids=one_of_genre_ids,
             page=1,
             retries=retries)
 
@@ -240,10 +241,10 @@ def write_page(
     """
     for result in data.results:
         if confirm_details(
-            result.id,
-            min_runtime_mins,
-            one_of_genre_ids,
-            retries):
+            movie_id=result.id,
+            min_runtime_mins=min_runtime_mins,
+            one_of_genre_ids=one_of_genre_ids,
+            retries=retries):
 
             dictwriter.writerow(result)
 
@@ -279,20 +280,20 @@ def write_all_pages(
                     f"{discover_data.page} / {discover_data.total_pages} "
                     f"of movies released between {start_date} and {end_date}")
         write_page(
-            dictwriter,
-            discover_data,
-            min_runtime_mins,
-            one_of_genre_ids,
-            retries)
+            dictwriter=dictwriter,
+            data=discover_data,
+            min_runtime_mins=min_runtime_mins,
+            one_of_genre_ids=one_of_genre_ids,
+            retries=retries)
 
         if discover_data.page < discover_data.total_pages:
             discover_data = discover_movies_between(
-                start_date,
-                end_date,
-                min_runtime_mins,
-                one_of_genre_ids,
-                discover_data.page + 1,
-                retries)
+                start_date=start_date,
+                end_date=end_date,
+                min_runtime_mins=min_runtime_mins,
+                one_of_genre_ids=one_of_genre_ids,
+                page=discover_data.page + 1,
+                retries=retries)
         else:
             break
 
@@ -307,11 +308,14 @@ def download_all_movie_releasedates_between(
     slice_start_date = start_date
     while (slice_start_date < end_date):
         discover_data, slice_end_date = discover_lte_500pages_movies_between(
-            slice_start_date,
-            end_date,
+            start_date=slice_start_date,
+            end_date=end_date,
             min_runtime_mins=min_runtime_mins,
             one_of_genre_ids=one_of_genre_ids,
             retries=retries)
+        
+        if (not os.path.exists(outdir_path)):
+            os.mkdir(outdir_path)
         
         outfile_name = \
             f"movies_from_{slice_start_date}_to_{slice_end_date}.csv"
@@ -328,12 +332,13 @@ def download_all_movie_releasedates_between(
                 extrasaction='ignore')
             dictwriter.writeheader()
             write_all_pages(
-                dictwriter,
-                discover_data,
-                slice_start_date,
-                slice_end_date,
-                min_runtime_mins,
-                one_of_genre_ids, retries)
+                dictwriter=dictwriter,
+                discover_data=discover_data,
+                start_date=slice_start_date,
+                end_date=slice_end_date,
+                min_runtime_mins=min_runtime_mins,
+                one_of_genre_ids=one_of_genre_ids,
+                retries=retries)
         
         slice_start_date = slice_end_date + timedelta(days=1)
 
@@ -347,7 +352,13 @@ def main():
     stdout_handler = logging.StreamHandler(sys.stdout)
     stdout_handler.setLevel(logging.DEBUG)
 
-    file_handler = logging.FileHandler("logs/fetch_movies.log", mode='w')
+    logdir_name = "logs"
+    if (not os.path.exists(logdir_name)):
+        os.mkdir(logdir_name)
+    
+    file_handler = logging.FileHandler(
+        f"{logdir_name}/fetch_movies.log",
+        mode='w')
     file_handler.setLevel(logging.WARNING)
 
     formatter = logging.Formatter(
@@ -358,34 +369,36 @@ def main():
     logger.addHandler(stdout_handler)
     logger.addHandler(file_handler)
 
+    logger.info("Starting!")
+
     # These are all of the genre IDs defined by TMDb.
     genre_ids = [
-        28, # Action
-        12, # Adventure
-        16, # Animation
-        35, # Comedy
-        80, # Crime
-        99, # Documentary
-        18, # Drama
-        10751, # Family
-        14, # Fantasy
-        36, # History
-        27, # Horror
-        10402, # Music
-        9648, # Mystery
-        10749, # Romance
-        878, # Science Fiction
-        10770, # TV Movie
-        53, # Thriller
-        10752, # War
-        37 # Western
+        '28', # Action
+        '12', # Adventure
+        '16', # Animation
+        '35', # Comedy
+        '80', # Crime
+        '99', # Documentary
+        '18', # Drama
+        '10751', # Family
+        '14', # Fantasy
+        '36', # History
+        '27', # Horror
+        '10402', # Music
+        '9648', # Mystery
+        '10749', # Romance
+        '878', # Science Fiction
+        '10770', # TV Movie
+        '53', # Thriller
+        '10752', # War
+        '37' # Western
     ]
     
     # Configure movies to fetch.
     # The earliest possible date is 1874-12-09.
     download_all_movie_releasedates_between(
         outdir_path="movies_by_release/data",
-        start_date=date.min(),
+        start_date=date.fromisoformat("1874-12-09"),
         end_date=date.today(),
         min_runtime_mins=40,
         one_of_genre_ids=genre_ids,
