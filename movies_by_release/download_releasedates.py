@@ -10,6 +10,8 @@ import csv
 import os
 from tmdbv3api import TMDb, Discover, Movie
 from datetime import date, timedelta
+import asyncio
+import concurrent.futures
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +104,7 @@ def discover_movies_between(
 
     return data
 
-def discover_lte_500pages_movies_between(
+def discover_lte500pages_movies_between(
         start_date,
         end_date,
         min_runtime_mins=None,
@@ -307,7 +309,7 @@ def download_all_movie_releasedates_between(
     
     slice_start_date = start_date
     while (slice_start_date < end_date):
-        discover_data, slice_end_date = discover_lte_500pages_movies_between(
+        discover_data, slice_end_date = discover_lte500pages_movies_between(
             start_date=slice_start_date,
             end_date=end_date,
             min_runtime_mins=min_runtime_mins,
