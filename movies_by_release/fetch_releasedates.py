@@ -1,7 +1,9 @@
 import logging
+from datetime import date, timedelta
+import sys
+import os
 from tmdbv3api import Discover
 import math
-from datetime import timedelta
 import time
 import asyncio
 import concurrent.futures
@@ -9,10 +11,74 @@ import concurrent.futures
 logger = logging.getLogger(__name__)
 
 def main():
+    setup_logging()
+
+    discover_endpoint = create_endpoint()
+
+    # These are all of the genre IDs defined by TMDb.
+    genre_ids = [
+        '28', # Action
+        '12', # Adventure
+        '16', # Animation
+        '35', # Comedy
+        '80', # Crime
+        '99', # Documentary
+        '18', # Drama
+        '10751', # Family
+        '14', # Fantasy
+        '36', # History
+        '27', # Horror
+        '10402', # Music
+        '9648', # Mystery
+        '10749', # Romance
+        '878', # Science Fiction
+        '10770', # TV Movie
+        '53', # Thriller
+        '10752', # War
+        '37' # Western
+    ]
+
+    asyncio.run(download_all_movie_releasedates_between(
+        discover_endpoint=discover_endpoint,
+        start_date=date.fromisoformat("2024-01-01"),
+        end_date=date.today(),
+        min_runtime_mins=40,
+        one_of_genre_ids=genre_ids,
+        retries=3
+    ))
+
+def setup_logging():
+    logger.setLevel(logging.DEBUG)
+
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setLevel(logging.DEBUG)
+
+    logdir_name = "logs"
+    if (not os.path.exists(logdir_name)):
+        os.mkdir(logdir_name)
+    
+    file_handler = logging.FileHandler(
+        f"{logdir_name}/fetch_movies.log",
+        mode='w')
+    file_handler.setLevel(logging.WARNING)
+
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    stdout_handler.setFormatter(formatter)
+    file_handler.setFormatter(formatter)
+
+    logger.addHandler(stdout_handler)
+    logger.addHandler(file_handler)
+
+    logger.info("Starting!")
+
+def create_endpoint():
     # Configure Discover endpoint for TMDb API
     discover_endpoint = Discover()
     discover_endpoint.wait_on_rate_limit = True
     discover_endpoint.cache = False
+
+    return discover_endpoint
 
 async def download_all_movie_releasedates_between(
         discover_endpoint,
@@ -25,6 +91,7 @@ async def download_all_movie_releasedates_between(
     slice_start_date = start_date
     while (slice_start_date < end_date):
         discover_data, slice_end_date = discover_lte500pages_movies_between(
+            discover_endpoint=discover_endpoint,
             start_date=slice_start_date,
             end_date=end_date,
             min_runtime_mins=min_runtime_mins,
@@ -46,7 +113,7 @@ async def download_all_movie_releasedates_between(
                 )
             )
         
-        # TODO Write the results to a file.
+        logger.info(f"Discovered {len(results)} results")
         
         slice_start_date = slice_end_date + timedelta(days=1)
 
@@ -97,6 +164,7 @@ def discover_lte500pages_movies_between(
         end_date = start_date + (timediff / 2)
 
         data = discover_movies_between(
+            discover_endpoint=discover_endpoint,
             start_date=start_date,
             end_date=end_date,
             min_runtime_mins=min_runtime_mins,
